@@ -1,0 +1,152 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- ==================== CONFIG ====================
+local CONFIG = {
+	InfiniteHealth = true,
+	Speed = 28,
+	JumpPower = 55,
+}
+
+-- ==================== HEALTH ====================
+local function setupHealth(character)
+	local humanoid = character:WaitForChild("Humanoid", 5)
+	if not humanoid then return end
+
+	if CONFIG.InfiniteHealth then
+		humanoid.MaxHealth = math.huge
+		humanoid.Health = math.huge
+
+		humanoid.HealthChanged:Connect(function()
+			if humanoid.Health < humanoid.MaxHealth then
+				humanoid.Health = humanoid.MaxHealth
+			end
+		end)
+	end
+end
+
+-- ==================== MOVEMENT ====================
+local function setupMovement(character)
+	local humanoid = character:WaitForChild("Humanoid", 5)
+	if not humanoid then return end
+
+	humanoid.WalkSpeed = CONFIG.Speed
+	humanoid.JumpPower = CONFIG.JumpPower
+end
+
+-- ==================== TELEPORT ====================
+local function teleportToPlayer(playerName)
+	local target = Players:FindFirstChild(playerName)
+	if not target or not target.Character then return end
+
+	local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+	local myChar = LocalPlayer.Character
+	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+	if targetRoot and myRoot then
+		myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
+	end
+end
+
+-- ==================== GUI ====================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TPGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 280)
+Frame.Position = UDim2.new(0.02, 0, 0.3, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 32)
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Title.Text = "วาร์ปผู้เล่น"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 15
+Title.Parent = Frame
+
+local ScrollingFrame = Instance.new("ScrollingFrame")
+ScrollingFrame.Size = UDim2.new(1, -8, 1, -40)
+ScrollingFrame.Position = UDim2.new(0, 4, 0, 36)
+ScrollingFrame.BackgroundTransparency = 1
+ScrollingFrame.ScrollBarThickness = 3
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollingFrame.Parent = Frame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 3)
+UIListLayout.Parent = ScrollingFrame
+
+local function refreshList()
+	for _, v in pairs(ScrollingFrame:GetChildren()) do
+		if v:IsA("TextButton") then
+			v:Destroy()
+		end
+	end
+
+	local y = 0
+	for _, player in pairs(Players:GetPlayers()) do
+		if player \~= LocalPlayer then
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1, 0, 0, 30)
+			btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+			btn.Text = player.Name
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 13
+			btn.Parent = ScrollingFrame
+
+			btn.MouseButton1Click:Connect(function()
+				teleportToPlayer(player.Name)
+			end)
+
+			y = y + 33
+		end
+	end
+	ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, y)
+end
+
+-- รีเฟรชรายชื่อทุก 2 วินาที
+task.spawn(function()
+	while true do
+		refreshList()
+		task.wait(2)
+	end
+end)
+
+-- ==================== MAIN ====================
+local function onCharacterAdded(character)
+	setupHealth(character)
+	setupMovement(character)
+end
+
+if LocalPlayer.Character then
+	onCharacterAdded(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- ลูปป้องกันค่าถูกรีเซ็ต
+task.spawn(function()
+	while true do
+		task.wait(1.5)
+		local char = LocalPlayer.Character
+		if char then
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				if CONFIG.InfiniteHealth then
+					hum.MaxHealth = math.huge
+					hum.Health = math.huge
+				end
+				hum.WalkSpeed = CONFIG.Speed
+				hum.JumpPower = CONFIG.JumpPower
+			end
+		end
+	end
+end)
+
+print("Script Loaded")
